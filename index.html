@@ -2,48 +2,51 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <title>브이월드 토지 지도 뷰어</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@7.5.2/ol.css">
-<script src="https://cdn.jsdelivr.net/npm/ol@7.5.2/dist/ol.js"></script>
 
 <style>
-body {
-    margin:0;
-    font-family:Arial, Helvetica, sans-serif;
+body{
+margin:0;
+font-family:Arial;
 }
-#map {
-    width:100%;
-    height:100vh;
+
+#map{
+width:100%;
+height:100vh;
 }
-.panel {
-    position:absolute;
-    top:15px;
-    left:15px;
-    z-index:1000;
-    background:#0f1b2e;
-    color:white;
-    padding:15px;
-    border-radius:10px;
-    width:260px;
+
+.panel{
+position:absolute;
+top:15px;
+left:15px;
+z-index:1000;
+background:#0f1b2e;
+color:white;
+padding:15px;
+border-radius:10px;
+width:260px;
 }
+
 .panel input{
-    width:100%;
-    padding:8px;
-    margin-top:5px;
+width:100%;
+padding:8px;
+margin-top:5px;
 }
+
 .panel button{
-    margin-top:8px;
-    width:100%;
-    padding:8px;
+margin-top:8px;
+width:100%;
+padding:8px;
+cursor:pointer;
 }
+
 .title{
-    font-size:18px;
-    margin-bottom:10px;
+font-size:18px;
+margin-bottom:10px;
 }
 </style>
+
 </head>
 
 <body>
@@ -57,6 +60,7 @@ body {
 <div style="margin-top:10px;">지번 검색</div>
 <input id="addr" placeholder="예: 서울 중구 세종대로 110">
 
+<button onclick="initMap()">지도 시작</button>
 <button onclick="search()">위치 찾기</button>
 
 </div>
@@ -65,47 +69,65 @@ body {
 
 <script>
 
-var map = new ol.Map({
-  target: 'map',
-  layers: [
-    new ol.layer.Tile({
-      source: new ol.source.XYZ({
-        url: "https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png"
-      })
-    })
-  ],
-  view: new ol.View({
-    center: ol.proj.fromLonLat([127,37.5]),
-    zoom: 7
-  })
+var map;
+var marker;
+
+function initMap(){
+
+var key=document.getElementById("apikey").value;
+
+var script=document.createElement("script");
+script.src="https://map.vworld.kr/js/vworldMapInit.js.do?apiKey="+key;
+
+document.head.appendChild(script);
+
+script.onload=function(){
+
+map = new vw.Map("map", {
+center: new vw.LatLng(37.5665,126.9780),
+level: 8
 });
+
+}
+
+}
 
 
 function search(){
 
-let key=document.getElementById("apikey").value;
-let addr=document.getElementById("addr").value;
+var addr=document.getElementById("addr").value;
 
-let url="https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&type=PARCEL&address="+encodeURIComponent(addr)+"&key="+key;
+var geocoder = new vw.Geocoder();
 
-fetch(url)
-.then(res=>res.json())
-.then(data=>{
+geocoder.addressSearch(addr,function(result,status){
 
-let x=data.response.result.point.x;
-let y=data.response.result.point.y;
+if(status === vw.GeocoderStatus.OK){
 
-let coord=ol.proj.fromLonLat([x,y]);
+var point=result[0].point;
 
-map.getView().animate({
-center:coord,
-zoom:18
+var lat=point.y;
+var lon=point.x;
+
+var move=new vw.LatLng(lat,lon);
+
+map.setCenter(move);
+map.setLevel(2);
+
+if(marker){
+marker.setMap(null);
+}
+
+marker=new vw.Marker({
+position:move,
+map:map
 });
 
-})
-.catch(err=>{
+}else{
+
 alert("검색 실패");
-console.log(err);
+
+}
+
 });
 
 }
