@@ -3,12 +3,16 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>브이월드 토지 지도 뷰어</title>
+<title>토지 지도 뷰어</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@7.5.2/ol.css">
+<script src="https://cdn.jsdelivr.net/npm/ol@7.5.2/dist/ol.js"></script>
 
 <style>
 body{
 margin:0;
-font-family:Arial;
+font-family:Arial, Helvetica, sans-serif;
 }
 
 #map{
@@ -45,6 +49,7 @@ cursor:pointer;
 font-size:18px;
 margin-bottom:10px;
 }
+
 </style>
 
 </head>
@@ -52,15 +57,12 @@ margin-bottom:10px;
 <body>
 
 <div class="panel">
-<div class="title">브이월드 지도</div>
 
-<div>VWorld API Key</div>
-<input id="apikey" placeholder="여기에 API 키 입력">
+<div class="title">토지 지도</div>
 
-<div style="margin-top:10px;">지번 검색</div>
+<div>주소 / 지번 검색</div>
 <input id="addr" placeholder="예: 서울 중구 세종대로 110">
 
-<button onclick="initMap()">지도 시작</button>
 <button onclick="search()">위치 찾기</button>
 
 </div>
@@ -69,65 +71,62 @@ margin-bottom:10px;
 
 <script>
 
-var map;
-var marker;
-
-function initMap(){
-
-var key=document.getElementById("apikey").value;
-
-var script=document.createElement("script");
-script.src="https://map.vworld.kr/js/vworldMapInit.js.do?apiKey="+key;
-
-document.head.appendChild(script);
-
-script.onload=function(){
-
-map = new vw.Map("map", {
-center: new vw.LatLng(37.5665,126.9780),
-level: 8
+var map = new ol.Map({
+target: 'map',
+layers: [
+new ol.layer.Tile({
+source: new ol.source.OSM()
+})
+],
+view: new ol.View({
+center: ol.proj.fromLonLat([127,37.5]),
+zoom: 7
+})
 });
 
-}
+var markerLayer = new ol.layer.Vector({
+source: new ol.source.Vector()
+});
 
-}
-
+map.addLayer(markerLayer);
 
 function search(){
 
-var addr=document.getElementById("addr").value;
+let addr=document.getElementById("addr").value;
 
-var geocoder = new vw.Geocoder();
+let url="https://nominatim.openstreetmap.org/search?format=json&q="+encodeURIComponent(addr);
 
-geocoder.addressSearch(addr,function(result,status){
+fetch(url)
+.then(res=>res.json())
+.then(data=>{
 
-if(status === vw.GeocoderStatus.OK){
-
-var point=result[0].point;
-
-var lat=point.y;
-var lon=point.x;
-
-var move=new vw.LatLng(lat,lon);
-
-map.setCenter(move);
-map.setLevel(2);
-
-if(marker){
-marker.setMap(null);
+if(data.length===0){
+alert("검색 결과 없음");
+return;
 }
 
-marker=new vw.Marker({
-position:move,
-map:map
+let lon=data[0].lon;
+let lat=data[0].lat;
+
+let coord=ol.proj.fromLonLat([lon,lat]);
+
+map.getView().animate({
+center:coord,
+zoom:18
 });
 
-}else{
+markerLayer.getSource().clear();
 
+let marker=new ol.Feature({
+geometry:new ol.geom.Point(coord)
+});
+
+markerLayer.getSource().addFeature(marker);
+
+})
+.catch(err=>{
 alert("검색 실패");
-
-}
-
+console.log(err);
 });
 
 }
